@@ -30,7 +30,7 @@
 - 仅供学习交流，严禁用于任何商业用途
 
 ## 相关项目
-- [ncmdump (核心解密)]([https://github.com/Binaryify/ncmdump](https://git.taurusxin.com/taurusxin/ncmdump-go))
+- [ncmdump-go (核心解密)]((https://git.taurusxin.com/taurusxin/ncmdump-go))
 - [fluent-ffmpeg (转码)](https://github.com/fluent-ffmpeg/node-fluent-ffmpeg)
 
 ---
