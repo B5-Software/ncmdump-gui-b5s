@@ -1,11 +1,14 @@
 # ncmdump-gui-b5s
 
-> 基于 ncmdump 的跨平台网易云音乐 NCM 文件一键解密/转码图形界面
+> 基于 ncmdump-go 的跨平台网易云音乐 NCM 文件一键解密/转码图形界面
 
 - 作者：B5-Software
 - 项目主页：https://github.com/B5-Software/ncmdump-gui-b5s
 - 许可证：GPLv3
 - 完全免费，任何收费行为均为诈骗！
+
+## 重要提示
+- ffmpeg 的二进制文件过大无法上传，如需自行打包，请下载相应平台的 ffmpeg 二进制文件并放入相应目录
 
 ## 功能特性
 - 支持批量拖放/选择 NCM 文件，一键解密为 FLAC/MP3
