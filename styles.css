@@ -181,28 +181,24 @@ body {
     opacity: 0.8;
 }
 
-/* 文件列表滚动区域高度调整 */
 .file-list {
-    max-height: 400px; /* 原为200px，增大以显示更多文件 */
-    min-height: 120px; /* 增加初始高度，空时也有空间 */
+    max-height: 200px;
     overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
     background-color: var(--surface);
     border-radius: var(--border-radius);
-    margin-top: 16px;
-    padding: 8px 0;
+    padding: 12px;
+    display: none;
+    flex-direction: column;
+    gap: 8px;
 }
 
 .file-item {
     display: flex;
     align-items: center;
     padding: 8px 12px;
-    background-color: var(--surface);
+    background-color: rgba(255, 255, 255, 0.05);
     border-radius: 8px;
     transition: var(--transition);
-    border: 1px solid var(--border-color);
 }
 
 .file-item:hover {

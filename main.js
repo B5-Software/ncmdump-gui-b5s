@@ -17,14 +17,20 @@
  * 本软件完全免费，任何收费行为均为诈骗！
  */
 
-const { app, BrowserWindow, ipcMain, shell, dialog, nativeTheme } = require('electron')
+const { app, BrowserWindow, ipcMain, shell, dialog, nativeTheme, protocol, net } = require('electron')
 const path = require('path')
 const fs = require('fs-extra').default || require('fs-extra')
 const { spawn } = require('child_process')
 const os = require('os')
+const { URL } = require('url')
 
 let mainWindow
 const userPrefsPath = path.join(app.getPath('userData'), 'user-preferences.json')
+
+// 在app启动前注册自定义协议
+protocol.registerSchemesAsPrivileged([
+  { scheme: 'app', privileges: { secure: true, standard: true, supportFetchAPI: true } }
+])
 
 // 默认设置
 const defaultSettings = {
@@ -55,26 +61,89 @@ const settings = loadSettings()
 async function createWindow() {
   mainWindow = new BrowserWindow({
     width: 800,
-    height: 760, // 初始高度由600提升到760，确保文件列表和按钮完整可见
+    height: 760,
     minWidth: 600,
-    minHeight: 600, // 最小高度同步提升，避免窗口太小遮挡按钮
+    minHeight: 600,
     title: '音乐文件解密器',
     icon: path.join(__dirname, 'assets/icons/icon.png'),
     webPreferences: {
-      devTools: false, // 禁用 DevTools
+      devTools: true,
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       enableRemoteModule: false,
-      sandbox: true
+      sandbox: false, // 关闭沙箱以允许协议处理器访问文件系统
+      webSecurity: true,
+      allowRunningInsecureContent: false,
     },
     frame: false,
     backgroundColor: '#1e1e2e'
   })
 
-  await mainWindow.loadFile('index.html')
+  try {
+    await mainWindow.loadURL('app://./index.html')
+  } catch (error) {
+    console.error('加载页面失败:', error)
+  }
 }
 
-app.whenReady().then(createWindow)
+app.whenReady().then(() => {
+  // 注册自定义协议
+  protocol.registerFileProtocol('app', (request, callback) => {
+    try {
+      const url = new URL(request.url)
+      let pathname = url.pathname.startsWith('/') ? url.pathname.slice(1) : url.pathname
+      pathname = decodeURIComponent(pathname)
+      
+      // 处理Windows路径分隔符
+      pathname = pathname.replace(/\//g, path.sep)
+      
+      // 特殊处理字体文件路径
+      if (pathname.includes(`webfonts${path.sep}`) && !pathname.includes(`css${path.sep}webfonts${path.sep}`)) {
+        pathname = pathname.replace(`webfonts${path.sep}`, `css${path.sep}webfonts${path.sep}`)
+      }
+      
+      let filePath = path.join(__dirname, pathname)
+      console.log('Trying to load file:', filePath)
+      
+      // 如果是打包后的环境，需要调整资源路径
+      if (!app.isPackaged) {
+        // 开发环境，使用当前目录
+        filePath = path.join(__dirname, pathname)
+      } else {
+        // 生产环境，首先尝试从 resources/assets 直接加载
+        filePath = path.join(process.resourcesPath, 'assets', pathname.replace(/^assets[/\\]/, ''))
+        if (!fs.existsSync(filePath)) {
+          // 如果不存在，尝试从 app.asar 中加载
+          filePath = path.join(process.resourcesPath, 'app.asar', pathname)
+          if (!fs.existsSync(filePath)) {
+            // 最后尝试从 app.asar.unpacked 中加载
+            filePath = path.join(process.resourcesPath, 'app.asar.unpacked', pathname)
+          }
+        }
+      }
+      
+      console.log('Final file path:', filePath)
+      
+      // 验证文件是否存在
+      if (!fs.existsSync(filePath)) {
+        console.error(`File not found: ${filePath}`)
+        callback({ error: -6 })
+        return
+      }
+      
+      callback({ path: filePath })
+    } catch (error) {
+      console.error('Protocol handler error:', error)
+      callback({ error: -2 })
+    }
+  })
+
+  createWindow()
+
+  app.on('activate', function () {
+    if (BrowserWindow.getAllWindows().length === 0) createWindow()
+  })
+})
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
@@ -174,42 +243,16 @@ nativeTheme.on('updated', () => {
 // 处理文件路径获取
 ipcMain.handle('get-file-paths', async (event, filesData) => {
   try {
-    console.log('[主进程] 收到文件数据:', filesData);
-    
-    // 处理传入的文件数据
-    return filesData.map(file => {
-      // macOS 下，我们使用 name 属性作为文件名
-      if (process.platform === 'darwin') {
-        // 如果文件对象包含完整路径信息
-        if (file.path) {
-          return file.path;
-        }
-        
-        // 否则尝试从拖放事件中获取文件路径
-        if (file.name) {
-          // 为了安全起见，我们需要验证文件是否真实存在
-          const possiblePaths = [
-            `${app.getPath('downloads')}/${file.name}`,
-            `${app.getPath('desktop')}/${file.name}`,
-            `${app.getPath('documents')}/${file.name}`
-          ];
-          
-          for (const path of possiblePaths) {
-            if (require('fs').existsSync(path)) {
-              console.log('[主进程] 找到文件路径:', path);
-              return path;
-            }
-          }
-        }
-      }
-      
-      // 其他平台或默认情况下返回 path 属性
-      return file.path || null;
-    }).filter(Boolean); // 过滤掉无效的路径
-    
+    // 直接使用提供的路径
+    const paths = filesData
+      .filter(file => file && file.path) // 过滤有效路径
+      .map(file => file.path);
+
+    console.log('[主进程] 返回的文件路径:', paths);
+    return paths;
   } catch (err) {
-    console.error('[主进程] 获取文件路径时出错:', err);
-    return [];
+    console.error('[主进程] 获取文件路径时发生错误:', err);
+    throw err;
   }
 })
 

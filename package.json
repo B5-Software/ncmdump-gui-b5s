@@ -1,6 +1,6 @@
 {
   "name": "ncmdump_gui_b5s",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
@@ -19,7 +19,7 @@
     "universalify": "^2.0.0"
   },
   "devDependencies": {
-    "electron": "^36.4.0",
+    "electron": "^31.7.6",
     "electron-builder": "^26.0.12",
     "glob": "^9.3.5",
     "rimraf": "^5.0.10"
@@ -83,47 +83,15 @@
     },
     "extraResources": [
       {
-        "from": "node_modules/fs-extra",
-        "to": "node_modules/fs-extra"
-      },
-      {
-        "from": "node_modules/universalify",
-        "to": "node_modules/universalify"
-      },
-      {
-        "from": "assets/ncmdump",
-        "to": "assets/ncmdump",
+        "from": "assets",
+        "to": "assets",
         "filter": [
           "**/*"
         ]
       },
       {
-        "from": "assets/ffmpeg",
-        "to": "assets/ffmpeg",
-        "filter": [
-          "**/*"
-        ]
-      },
-      {
-        "from": "assets/icons",
-        "to": "assets/icons",
-        "filter": [
-          "**/*"
-        ]
-      },
-      {
-        "from": "assets/css",
-        "to": "assets/css",
-        "filter": [
-          "**/*"
-        ]
-      },
-      {
-        "from": "assets/fonts",
-        "to": "assets/fonts",
-        "filter": [
-          "**/*"
-        ]
+        "from": "LICENSE.txt",
+        "to": "LICENSE.txt"
       }
     ],
     "asar": true,
@@ -131,9 +99,7 @@
       "**/node_modules/{fs-extra,universalify}/**",
       "**/assets/ncmdump/**",
       "**/assets/ffmpeg/**",
-      "**/assets/icons/**",
-      "**/assets/css/**",
-      "**/assets/fonts/**"
+      "LICENSE.txt"
     ],
     "publish": null
   },

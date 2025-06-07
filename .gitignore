@@ -1,0 +1,10 @@
+# Ignore platform-specific binaries in assets
+
+assets/ncmdump/win-x64/ncmdump.exe
+assets/ncmdump/darwin-x64/ncmdump
+assets/ncmdump/darwin-arm64/ncmdump
+assets/ffmpeg/darwin-x64/ffmpeg
+assets/ffmpeg/darwin-arm64/ffmpeg
+assets/ffmpeg/win-x64/ffmpeg.exe
+assets/ffmpeg/win-x64/ffplay.exe
+assets/ffmpeg/win-x64/ffprobe.exe

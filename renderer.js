@@ -18,41 +18,9 @@
  */
 
 document.addEventListener('DOMContentLoaded', async () => {
-  // 动态修正静态资源路径（仅生产环境生效）
-  try {
-    const assetsPath = await window.electronAPI.getAssetsPath();
-    console.log('[资源路径]', assetsPath);
-
-    // 加载 Font Awesome CSS
-    const linkFA = document.createElement('link');
-    linkFA.rel = 'stylesheet';
-    linkFA.href = `file://${assetsPath}/css/all.min.css`;
-    document.head.appendChild(linkFA);
-    console.log('[加载Font Awesome CSS]', linkFA.href);
-
-    // 添加 Font Awesome 字体定义
-    const style = document.createElement('style');
-    style.textContent = `
-      @font-face {
-        font-family: 'Font Awesome 6 Free';
-        font-style: normal;
-        font-weight: 400;
-        font-display: block;
-        src: url('file://${assetsPath}/css/fa-regular-400.woff2') format('woff2');
-      }
-      @font-face {
-        font-family: 'Font Awesome 6 Free';
-        font-style: normal;
-        font-weight: 900;
-        font-display: block;
-        src: url('file://${assetsPath}/css/fa-solid-900.woff2') format('woff2');
-      }
-    `;
-    console.log('[添加字体样式]');
-    document.head.appendChild(style);
-  } catch (e) {
-    console.error('[静态资源路径修正异常]', e);
-  }
+  // 调试信息
+  console.log('渲染进程已加载');
+  console.log('Electron API 可用:', !!window.electronAPI);
 
   // 元素引用
   const dropZone = document.getElementById('drop-zone')
@@ -77,80 +45,44 @@ document.addEventListener('DOMContentLoaded', async () => {
   window.addEventListener('dragover', e => { e.preventDefault(); });
   window.addEventListener('drop', e => { e.preventDefault(); });
 
-  // 拖放功能
+   // 拖放功能
   dropZone.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    dropZone.classList.add('active');
-  });
-
-  dropZone.addEventListener('dragenter', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    dropZone.classList.add('active');
-  });
-
-  dropZone.addEventListener('dragleave', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    dropZone.classList.remove('active');
-  });
-
-  dropZone.addEventListener('drop', async (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    dropZone.classList.remove('active');
+    e.preventDefault()
+    dropZone.classList.add('active')
+  })
+  
+  dropZone.addEventListener('dragleave', () => {
+    dropZone.classList.remove('active')
+  })
+  
+  dropZone.addEventListener('drop', (e) => {
+    e.preventDefault()
+    dropZone.classList.remove('active')
     
-    try {
-      const droppedFiles = e.dataTransfer?.files;
-      console.log('[拖放事件触发]', droppedFiles);
-      
-      if (!droppedFiles?.length) {
-        console.warn('[拖放事件] 没有文件');
-        showToast('请拖放有效的 .ncm 文件');
-        return;
-      }
+    const droppedFiles = Array.from(e.dataTransfer.files)
+    if (droppedFiles.length > 0) {
+      addFiles(droppedFiles.map(f => f.path))
+    } else {
+      showToast('请拖放文件')
+    }
+  })
 
-      // 将 FileList 转换为数组并提取必要的文件信息
-      const filesData = Array.from(droppedFiles).map(file => ({
-        name: file.name,
-        path: file.path, // 在某些平台可能不可用
-        size: file.size,
-        type: file.type,
-        lastModified: file.lastModified
-      }));
-
-      // macOS 下拖放文件无法获取真实路径，直接提示用户
-      if (filesData.some(f => !f.path)) {
-        showToast('macOS 下请使用“选择文件”按钮添加 .ncm 文件', true);
-        return;
-      }
-
-      console.log('[传递文件数据]', filesData);
-      const filePaths = await window.electronAPI.getFilePaths(filesData);
-      console.log('[获取到的文件路径]', filePaths);
-      
-      const validFiles = filePaths.filter(path => path && path.toLowerCase().endsWith('.ncm'));
-      console.log('[有效的NCM文件]', validFiles);
+  // 文件选择按钮处理
+  selectFilesBtn.addEventListener('click', async () => {
+    const filePaths = await window.electronAPI.openFileDialog();
+    
+    if (filePaths && filePaths.length > 0) {
+      const validFiles = filePaths.filter(path => 
+        path && path.toLowerCase().endsWith('.ncm')
+      );
       
       if (validFiles.length > 0) {
         addFiles(validFiles);
       } else {
-        showToast('请拖放有效的 .ncm 文件');
+        showToast('未选择有效的 .ncm 文件');
       }
-    } catch (err) {
-      console.error('[拖放事件处理错误]', err);
-      showToast('文件处理失败，请重试');
     }
   });
-
-  // 文件选择
-  selectFilesBtn.addEventListener('click', async () => {
-    const filePaths = await window.electronAPI.openFileDialog()
-    if (filePaths && filePaths.length > 0) {
-      addFiles(filePaths)
-    }
-  })
   
   // 解密按钮
   decryptBtn.addEventListener('click', async () => {
