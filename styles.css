@@ -1,0 +1,522 @@
+/*
+ * ncmdump-gui-b5s
+ * Copyright (C) 2025 B5-Software
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ *
+ * 本软件完全免费，任何收费行为均为诈骗！
+ */
+
+:root {
+    --primary-color: #7c3aed;
+    --primary-dark: #5b21b6;
+    --background: #1e1e2e;
+    --surface: #2a2a3a;
+    --text-primary: #e2e8f0;
+    --text-secondary: #94a3b8;
+    --success: #10b981;
+    --error: #ef4444;
+    --border-radius: 12px;
+    --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --border-color: #4a4a5a;
+    --hover-bg: #3a3a4a;
+    --button-text: #ffffff;
+    --drop-zone-border: #4a4a5a;
+    --modal-overlay: rgba(0, 0, 0, 0.5);
+    --input-bg: #2a2a3a;
+    --input-border: #4a4a5a;
+    --link-color: #818cf8;
+    --icon-color: #a5b4fc;
+    --icon-hover: #c7d2fe;
+    --window-btn-bg: transparent;
+    --window-btn-hover: #3a3a4a;
+    --window-btn-close-hover: #ef4444;
+}
+
+:root[data-theme="light"] {
+    --background: #ffffff;
+    --surface: #f1f5f9;
+    --text-primary: #1e293b;
+    --text-secondary: #475569;
+    --border-color: #e2e8f0;
+    --hover-bg: #e2e8f0;
+    --button-text: #ffffff;
+    --drop-zone-border: #cbd5e1;
+    --modal-overlay: rgba(0, 0, 0, 0.25);
+    --input-bg: #ffffff;
+    --input-border: #cbd5e1;
+    --link-color: #6366f1;
+    --icon-color: #6366f1;
+    --icon-hover: #7c3aed;
+    --window-btn-bg: #e2e8f0;
+    --window-btn-hover: #c7d2fe;
+    --window-btn-close-hover: #ef4444;
+}
+
+@font-face {
+    font-family: 'Noto Sans SC';
+    font-style: normal;
+    font-weight: 400;
+    src: url('./assets/fonts/k3kXo84MPvpLmixcA63oeALhLOCT-xWNm8Hqd37g1OkDRZe7lR4sg1IzSy-MNbE9VH8V.woff2') format('woff2');
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Noto Sans SC', sans-serif;
+    background-color: var(--background);
+    color: var(--text-primary);
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.title-bar {
+    height: 40px;
+    background-color: var(--surface);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 12px;
+    -webkit-app-region: drag;
+    user-select: none;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.title {
+    font-weight: 500;
+    font-size: 14px;
+    opacity: 0.9;
+}
+
+.window-controls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.control-btn {
+    -webkit-app-region: no-drag;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: none;
+    background: var(--window-btn-bg);
+    color: var(--icon-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.control-btn:hover {
+    background: var(--window-btn-hover);
+    color: var(--icon-hover);
+}
+
+#close-btn:hover {
+    background: var(--window-btn-close-hover);
+    color: #fff;
+}
+
+.container {
+    flex: 1;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    overflow: hidden;
+    background-color: var(--background);
+}
+
+.drop-zone {
+    flex: 1;
+    border: 2px dashed var(--drop-zone-border);
+    border-radius: var(--border-radius);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    transition: var(--transition);
+    background-color: var(--surface);
+}
+
+.drop-zone.active {
+    background-color: rgba(124, 58, 237, 0.2);
+    transform: scale(0.98);
+}
+
+.drop-zone.drag-over {
+    border-color: var(--primary-color);
+    background-color: var(--hover-bg);
+}
+
+.drop-content {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+}
+
+.drop-icon {
+    font-size: 48px;
+    color: var(--primary-color);
+    opacity: 0.8;
+}
+
+/* 文件列表滚动区域高度调整 */
+.file-list {
+    max-height: 400px; /* 原为200px，增大以显示更多文件 */
+    min-height: 120px; /* 增加初始高度，空时也有空间 */
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background-color: var(--surface);
+    border-radius: var(--border-radius);
+    margin-top: 16px;
+    padding: 8px 0;
+}
+
+.file-item {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    background-color: var(--surface);
+    border-radius: 8px;
+    transition: var(--transition);
+    border: 1px solid var(--border-color);
+}
+
+.file-item:hover {
+    background-color: var(--hover-bg);
+}
+
+.file-icon {
+    margin-right: 12px;
+    color: var(--primary-color);
+}
+
+.file-name {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.file-remove {
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: var(--transition);
+    padding: 4px;
+}
+
+.file-remove:hover {
+    color: var(--error);
+}
+
+.progress-container {
+    display: none;
+    flex-direction: column;
+    gap: 8px;
+    background-color: var(--surface);
+    padding: 12px;
+    border-radius: var(--border-radius);
+}
+
+.progress-info {
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+    color: var(--text-primary);
+}
+
+.progress-bar {
+    height: 8px;
+    background-color: var(--surface);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    width: 0%;
+    background-color: var(--primary-color);
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    color: var(--button-text);
+    border: none;
+    padding: 12px 24px;
+    border-radius: var(--border-radius);
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.btn-primary:hover {
+    background-color: var(--primary-dark);
+    transform: translateY(-2px);
+}
+
+.btn-primary:disabled {
+    background-color: var(--text-secondary);
+    cursor: not-allowed;
+    transform: none;
+    opacity: 0.5;
+}
+
+footer {
+    text-align: center;
+    padding: 12px;
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+#credit-link {
+    color: var(--primary-color);
+    text-decoration: none;
+    transition: var(--transition);
+}
+
+#credit-link:hover {
+    text-decoration: underline;
+}
+
+.toast {
+    position: fixed;
+    bottom: -60px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: var(--surface);
+    color: var(--text-primary);
+    padding: 12px 24px;
+    border-radius: var(--border-radius);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    opacity: 0;
+    transition: all 0.3s ease;
+    z-index: 1000;
+    border: 1px solid var(--border-color);
+}
+
+.toast.show {
+    bottom: 20px;
+    opacity: 1;
+}
+
+.toast.error {
+    background-color: var(--error);
+    color: var(--button-text);
+}
+
+/* 动画效果 */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in {
+    animation: fadeIn 0.3s ease forwards;
+}
+
+/* 滚动条样式 */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--surface);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--primary-color);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-dark);
+}
+
+/* 模态框样式 */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: var(--modal-overlay);
+    z-index: 1000;
+    backdrop-filter: blur(4px);
+}
+
+.modal.show {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background-color: var(--surface);
+    border-radius: var(--border-radius);
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    border: 1px solid var(--border-color);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.modal-header h3 {
+    margin: 0;
+    color: var(--text-primary);
+}
+
+.close-modal {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 1.2rem;
+}
+
+.modal-body {
+    padding: 1rem;
+}
+
+.setting-item {
+    margin-bottom: 1rem;
+    color: var(--text-primary);
+}
+
+.setting-item label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    color: var(--text-primary);
+}
+
+.output-dir-container {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+#output-dir {
+    flex: 1;
+    background-color: var(--input-bg);
+    color: var(--text-primary);
+    border: 1px solid var(--input-border);
+    border-radius: var(--border-radius);
+    padding: 0.5rem;
+    cursor: not-allowed;
+}
+
+.btn-secondary {
+    background-color: var(--surface);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 0.5rem;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.btn-secondary:hover {
+    background-color: var(--hover-bg);
+    border-color: var(--text-secondary);
+}
+
+/* 更新标题栏样式 */
+#settings-btn {
+    margin-right: auto;
+    padding: 8px;
+    font-size: 1.1em;
+    color: var(--icon-color);
+    background: var(--window-btn-bg);
+}
+
+#settings-btn:hover {
+    color: var(--icon-hover);
+    background: var(--window-btn-hover);
+}
+
+/* 输入框样式 */
+input[type="checkbox"], 
+input[type="radio"] {
+    accent-color: var(--primary-color);
+}
+
+/* 文件进度信息 */
+.progress-info {
+    color: var(--text-primary);
+}
+
+#progress-count {
+    color: var(--text-secondary);
+}
+
+footer a {
+    color: var(--link-color);
+    text-decoration: none;
+}
+
+footer a:hover {
+    text-decoration: underline;
+}
+
+.btn-primary i,
+.btn-secondary i,
+.file-icon,
+.drop-icon,
+.control-btn i,
+#settings-btn i {
+    color: var(--icon-color) !important;
+    transition: color 0.2s;
+}
+
+.btn-primary:hover i,
+.btn-secondary:hover i,
+#settings-btn:hover i {
+    color: var(--icon-hover) !important;
+}
+
+/* 保证“选择文件”按钮图标可见 */
+#select-files-btn i {
+    color: var(--icon-color) !important;
+}
+#select-files-btn:hover i {
+    color: var(--icon-hover) !important;
+}

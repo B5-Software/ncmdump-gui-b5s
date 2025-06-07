@@ -1,0 +1,174 @@
+{
+  "name": "ncmdump_gui_b5s",
+  "version": "2.0.0",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build-icon": "electron-icon-builder --input=./public/icon.png --output=build --flatten",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder",
+    "dist:win64": "electron-builder --win --x64",
+    "dist:mac64": "electron-builder --mac --x64",
+    "dist:macarm64": "electron-builder --mac --arm64"
+  },
+  "dependencies": {
+    "chokidar": "^3.5.3",
+    "electron-icon-builder": "^2.0.1",
+    "fluent-ffmpeg": "^2.1.3",
+    "fs-extra": "^11.3.0",
+    "universalify": "^2.0.0"
+  },
+  "devDependencies": {
+    "electron": "^36.4.0",
+    "electron-builder": "^26.0.12",
+    "glob": "^9.3.5",
+    "rimraf": "^5.0.10"
+  },
+  "license": "GPL-3.0-or-later",
+  "author": "B5-Software",
+  "homepage": "https://github.com/B5-Software/ncmdump-gui-b5s",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/B5-Software/ncmdump-gui-b5s.git"
+  },
+  "build": {
+    "appId": "com.b5software.ncmdump_gui_b5s",
+    "productName": "音乐文件解密器",
+    "copyright": "2025 B5-Software",
+    "files": [
+      "**/*",
+      "!node_modules/{@types,.cache}",
+      "LICENSE.txt",
+      "assets/ffmpeg/**",
+      "assets/icons/**",
+      "assets/css/**",
+      "assets/fonts/**",
+      "assets/ncmdump/**"
+    ],
+    "directories": {
+      "buildResources": "assets",
+      "output": "dist"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icons/icon.ico",
+      "legalTrademarks": "B5-Software",
+      "asarUnpack": [
+        "**/assets/ncmdump/**"
+      ]
+    },
+    "mac": {
+      "category": "public.app-category.music",
+      "target": "dmg",
+      "icon": "assets/icons/icon.icns",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "assets/entitlements.mac.plist",
+      "entitlementsInherit": "assets/entitlements.mac.plist",
+      "asarUnpack": [
+        "**/assets/ncmdump/**"
+      ]
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "assets/icons/icon.png",
+      "synopsis": "NCM音乐文件解密工具",
+      "category": "Audio"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "extraResources": [
+      {
+        "from": "node_modules/fs-extra",
+        "to": "node_modules/fs-extra"
+      },
+      {
+        "from": "node_modules/universalify",
+        "to": "node_modules/universalify"
+      },
+      {
+        "from": "assets/ncmdump",
+        "to": "assets/ncmdump",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "assets/ffmpeg",
+        "to": "assets/ffmpeg",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "assets/icons",
+        "to": "assets/icons",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "assets/css",
+        "to": "assets/css",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "assets/fonts",
+        "to": "assets/fonts",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "asar": true,
+    "asarUnpack": [
+      "**/node_modules/{fs-extra,universalify}/**",
+      "**/assets/ncmdump/**",
+      "**/assets/ffmpeg/**",
+      "**/assets/icons/**",
+      "**/assets/css/**",
+      "**/assets/fonts/**"
+    ],
+    "publish": null
+  },
+  "config": {
+    "forge": {
+      "packagerConfig": {
+        "asar": true,
+        "ignore": [
+          "/.gitignore",
+          "/.vscode",
+          "/node_modules/(?!ncmdump|fs-extra|universalify)"
+        ]
+      },
+      "makers": [
+        {
+          "name": "@electron-forge/maker-squirrel",
+          "config": {
+            "name": "ncmdump_gui_b5s"
+          }
+        },
+        {
+          "name": "@electron-forge/maker-zip",
+          "platforms": [
+            "darwin"
+          ]
+        },
+        {
+          "name": "@electron-forge/maker-deb",
+          "config": {}
+        },
+        {
+          "name": "@electron-forge/maker-rpm",
+          "config": {}
+        }
+      ]
+    }
+  }
+}

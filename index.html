@@ -1,0 +1,148 @@
+<!--
+  ncmdump-gui-b5s
+  Copyright (C) 2025 B5-Software
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+  本软件完全免费，任何收费行为均为诈骗！
+-->
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>音乐文件解密器</title>
+  <link rel="stylesheet" href="styles.css">
+  <!-- Font Awesome CSS 会在 renderer.js 中动态加载 -->
+</head>
+<body>
+  <div class="title-bar">
+    <div class="title">音乐文件解密器</div>
+    <div class="window-controls">
+      <button id="settings-btn" class="control-btn"><i class="fas fa-cog"></i></button>
+      <button id="minimize-btn" class="control-btn"><i class="fas fa-minus"></i></button>
+      <button id="maximize-btn" class="control-btn"><i class="far fa-square"></i></button>
+      <button id="close-btn" class="control-btn"><i class="fas fa-times"></i></button>
+    </div>
+  </div>
+  
+  <div class="container">
+    <div class="drop-zone" id="drop-zone">
+      <div class="drop-content">
+        <i class="fas fa-cloud-upload-alt drop-icon"></i>
+        <h2>拖放 NCM 文件到此处</h2>
+        <p>或</p>
+        <button id="select-files-btn" class="btn-primary">
+          <i class="fas fa-folder-open"></i> 选择文件
+        </button>
+      </div>
+    </div>
+    
+    <div class="file-list" id="file-list">
+      <!-- 文件列表将在这里动态生成 -->
+    </div>
+    
+    <div class="progress-container">
+      <div class="progress-info">
+        <span id="progress-text">准备就绪</span>
+        <span id="progress-count">0 个文件待处理</span>
+      </div>
+    </div>
+    
+    <button id="decrypt-btn" class="btn-primary" disabled>
+      <i class="fas fa-key"></i> 解密文件
+    </button>
+  </div>
+  
+  <footer>
+    <p>基于 ncmdump-go | Made by <a href="https://github.com/B5-Software" target="_blank" id="credit-link">B5-Software</a></p>
+  </footer>
+  
+  <div class="modal" id="settings-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>设置</h3>
+        <button class="close-modal"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="setting-item">
+          <label>
+            <input type="checkbox" id="system-theme" checked>
+            跟随系统主题
+          </label>
+        </div>
+        <div class="setting-item theme-toggle" style="display: none;">
+          <label>
+            <input type="radio" name="theme" value="light">
+            浅色主题
+          </label>
+          <label>
+            <input type="radio" name="theme" value="dark">
+            深色主题
+          </label>
+        </div>
+        <div class="setting-item">
+          <label>输出目录：</label>
+          <div class="output-dir-container">
+            <input type="text" id="output-dir" readonly>
+            <button id="choose-output-dir" class="btn-secondary">
+              <i class="fas fa-folder-open"></i>
+            </button>
+          </div>
+        </div>
+        <div class="setting-item">
+          <label>
+            <input type="checkbox" id="delete-source">
+            解密后删除原始NCM文件
+          </label>
+        </div>
+        <div class="setting-item">
+          <label>
+            <input type="checkbox" id="convert-to-mp3">
+            将FLAC文件转换为MP3
+          </label>
+        </div>
+        <div class="setting-item">
+          <button id="show-thanks-btn" class="btn-secondary" style="width:100%;margin-top:8px;">
+            <i class="fas fa-hands-helping"></i> 致谢 / 依赖声明
+          </button>
+        </div>
+      </div>
+      <!-- 开源声明 -->
+    </div>
+  </div>
+  <!-- 致谢/依赖声明子窗口modal -->
+  <div class="modal" id="thanks-modal">
+    <div class="modal-content" style="max-width:420px;">
+      <div class="modal-header">
+        <h3>致谢与依赖声明</h3>
+        <button class="close-thanks-modal control-btn" aria-label="关闭"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <ul style="margin:0.5em 0 0 1.2em;padding:0;list-style:disc;">
+          <li>ncmdump-go (<a href="https://git.taurusxin.com/taurusxin/ncmdump-go" target="_blank">MIT协议</a>)</li>
+          <li>ffmpeg (<a href="https://ffmpeg.org/" target="_blank">GPL协议</a>)</li>
+        </ul>
+        <div style="margin-top:1em;font-size:0.95em;color:var(--text-secondary);">
+          本软件基于上述开源项目实现，特此致谢！
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="toast" id="toast"></div>
+  
+  <script src="renderer.js"></script>
+</body>
+</html>
