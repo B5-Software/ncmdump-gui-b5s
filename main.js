@@ -38,7 +38,8 @@ const defaultSettings = {
   theme: 'light',
   outputDir: path.join(os.homedir(), 'Desktop', 'Decrypted-Audio-Output'),
   deleteSource: false,
-  convertToMp3: false
+  convertToMp3: false,
+  enableVolumeAdjust: false
 }
 
 // 读取设置
@@ -257,8 +258,22 @@ ipcMain.handle('get-file-paths', async (event, filesData) => {
 })
 
 // 处理文件解密
-ipcMain.handle('decrypt-files', async (event, files) => {
+ipcMain.handle('decrypt-files', async (event, filesData) => {
   await fs.ensureDir(settings.outputDir)
+  
+  // filesData can be either an array of strings (legacy) or an array of objects with path and volume
+  const files = filesData.map(f => typeof f === 'string' ? f : f.path)
+  const volumeMap = {} // Map from original filename (without extension) to volume percentage
+  
+  if (settings.enableVolumeAdjust) {
+    filesData.forEach(f => {
+      if (typeof f === 'object' && f.volume !== undefined && f.volume !== 100) {
+        // Extract filename without extension
+        const fileName = path.basename(f.path, '.ncm')
+        volumeMap[fileName] = f.volume
+      }
+    })
+  }
   
   const ncmdumpPath = getNcmdumpPath()
   const args = [...files, '-o', settings.outputDir]
@@ -310,36 +325,130 @@ ipcMain.handle('decrypt-files', async (event, files) => {
           }
         }
 
+        // Get list of output files for potential conversion and volume adjustment
+        const outputFiles = await fs.readdir(settings.outputDir)
+        const audioFiles = outputFiles.filter(f => 
+          f.toLowerCase().endsWith('.flac') || f.toLowerCase().endsWith('.mp3')
+        )
+
+        // === 以下代码为GPLv3相关 ===
+        // 使用ffmpeg(GPLv3)进行格式转换和音量调节
+        const ffmpegPath = getFfmpegPath() // GPLv3
+        let processedCount = 0
+        const totalToProcess = settings.convertToMp3 
+          ? audioFiles.filter(f => f.toLowerCase().endsWith('.flac')).length 
+          : Object.keys(volumeMap).length
+
+        // Process FLAC to MP3 conversion if enabled
         if (settings.convertToMp3) {
-          // === 以下代码为GPLv3相关 ===
-          // 使用ffmpeg(GPLv3)转换FLAC到MP3
-          const ffmpegPath = getFfmpegPath(); // GPLv3
-          const flacFiles = (await fs.readdir(settings.outputDir)).filter(f => f.toLowerCase().endsWith('.flac'));
-          let ffmpegCompleted = 0;
+          const flacFiles = audioFiles.filter(f => f.toLowerCase().endsWith('.flac'))
+          
           for (const file of flacFiles) {
             const inputPath = path.join(settings.outputDir, file)
             const outputPath = path.join(settings.outputDir, file.replace(/\.flac$/i, '.mp3'))
+            const fileBaseName = path.basename(file, '.flac')
+            const volume = volumeMap[fileBaseName]
+            
             try {
               await new Promise((resolveFfmpeg, rejectFfmpeg) => {
-                const ffmpeg = require('fluent-ffmpeg')
-                ffmpeg(inputPath)
-                  .setFfmpegPath(ffmpegPath) // GPLv3: 指定本地ffmpeg二进制
-                  .toFormat('mp3')
-                  .save(outputPath)
-                  .on('end', () => {
+                const args = ['-i', inputPath, '-y']
+                
+                // Add volume filter if needed
+                if (settings.enableVolumeAdjust && volume !== undefined) {
+                  const volumeMultiplier = volume / 100
+                  args.push('-af', `volume=${volumeMultiplier}`)
+                  delete volumeMap[fileBaseName] // Remove from map as it's processed
+                }
+                
+                args.push('-codec:a', 'libmp3lame', '-q:a', '2', outputPath)
+                
+                const ffmpegProcess = spawn(ffmpegPath, args)
+                
+                ffmpegProcess.on('close', (ffmpegCode) => {
+                  if (ffmpegCode === 0) {
                     fs.removeSync(inputPath)
-                    ffmpegCompleted++;
-                    mainWindow.webContents.send('progress-update', { completed: ffmpegCompleted, total: flacFiles.length, stage: 'ffmpeg' });
+                    processedCount++
+                    mainWindow.webContents.send('progress-update', { 
+                      completed: processedCount, 
+                      total: totalToProcess, 
+                      stage: 'ffmpeg' 
+                    })
                     resolveFfmpeg()
-                  })
-                  .on('error', rejectFfmpeg)
+                  } else {
+                    rejectFfmpeg(new Error(`ffmpeg exited with code ${ffmpegCode}`))
+                  }
+                })
+                
+                ffmpegProcess.on('error', rejectFfmpeg)
               })
             } catch (error) {
               console.error(`转换失败: ${file}`, error)
             }
           }
-          // === GPLv3相关代码结束 ===
         }
+        
+        // Process volume adjustment for remaining files (MP3 files and FLAC if not converting)
+        if (settings.enableVolumeAdjust && Object.keys(volumeMap).length > 0) {
+          const remainingFiles = Object.keys(volumeMap)
+          const totalVolumeAdjust = remainingFiles.length
+          let volumeAdjustCount = 0
+          
+          for (const fileBaseName of remainingFiles) {
+            const volume = volumeMap[fileBaseName]
+            
+            // Find the actual output file
+            let audioFile = audioFiles.find(f => {
+              const baseName = path.basename(f, path.extname(f))
+              return baseName === fileBaseName
+            })
+            
+            if (!audioFile) continue
+            
+            const inputPath = path.join(settings.outputDir, audioFile)
+            const ext = path.extname(audioFile)
+            const tempPath = path.join(settings.outputDir, `_temp_${audioFile}`)
+            
+            try {
+              await new Promise((resolveFfmpeg, rejectFfmpeg) => {
+                const volumeMultiplier = volume / 100
+                const args = ['-i', inputPath, '-y', '-af', `volume=${volumeMultiplier}`]
+                
+                if (ext.toLowerCase() === '.flac') {
+                  args.push('-codec:a', 'flac', tempPath)
+                } else {
+                  args.push('-codec:a', 'libmp3lame', '-q:a', '2', tempPath)
+                }
+                
+                const ffmpegProcess = spawn(ffmpegPath, args)
+                
+                ffmpegProcess.on('close', async (ffmpegCode) => {
+                  if (ffmpegCode === 0) {
+                    await fs.remove(inputPath)
+                    await fs.rename(tempPath, inputPath)
+                    volumeAdjustCount++
+                    mainWindow.webContents.send('progress-update', { 
+                      completed: volumeAdjustCount, 
+                      total: totalVolumeAdjust, 
+                      stage: 'volume' 
+                    })
+                    resolveFfmpeg()
+                  } else {
+                    // Clean up temp file if exists
+                    if (await fs.pathExists(tempPath)) {
+                      await fs.remove(tempPath)
+                    }
+                    rejectFfmpeg(new Error(`ffmpeg exited with code ${ffmpegCode}`))
+                  }
+                })
+                
+                ffmpegProcess.on('error', rejectFfmpeg)
+              })
+            } catch (error) {
+              console.error(`音量调节失败: ${audioFile}`, error)
+            }
+          }
+        }
+        // === GPLv3相关代码结束 ===
 
         resolve({ outputDir: settings.outputDir })
       })

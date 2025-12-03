@@ -34,7 +34,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   const closeBtn = document.getElementById('close-btn')
   const toast = document.getElementById('toast')
   
+  // files array now stores objects: { path: string, volume: number }
   let files = []
+  let volumeAdjustEnabled = false
   
   // 窗口控制
   minimizeBtn.addEventListener('click', () => window.electronAPI.windowControl('minimize'))
@@ -119,6 +121,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (stage === 'ffmpeg') {
       progressText.textContent = '正在转换格式...';
       progressCount.textContent = `${completed} / ${total} 个文件已转换`;
+    } else if (stage === 'volume') {
+      progressText.textContent = '正在调整音量...';
+      progressCount.textContent = `${completed} / ${total} 个文件已调整`;
     } else {
       progressCount.textContent = `${total} 个文件处理中`;
       if (completed === total) {
@@ -134,11 +139,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
     
+    // Get existing paths for duplicate checking
+    const existingPaths = files.map(f => f.path)
+    
     const newFiles = filePaths.filter(path => 
       path && typeof path === 'string' && 
       path.toLowerCase().endsWith('.ncm') && 
-      !files.includes(path)
-    )
+      !existingPaths.includes(path)
+    ).map(path => ({ path, volume: 100 })) // Default volume is 100%
     
     if (newFiles.length === 0) {
       showToast('没有添加新的 .ncm 文件')
@@ -161,14 +169,29 @@ document.addEventListener('DOMContentLoaded', async () => {
   function updateFileList() {
     fileList.innerHTML = ''
     
-    files.forEach((filePath, index) => {
+    files.forEach((fileObj, index) => {
+      const filePath = fileObj.path
+      const volume = fileObj.volume
       const fileName = filePath.split('/').pop().split('\\').pop()
       
       const fileItem = document.createElement('div')
       fileItem.className = 'file-item fade-in'
+      
+      // Build HTML based on whether volume adjustment is enabled
+      let volumeControlHTML = ''
+      if (volumeAdjustEnabled) {
+        volumeControlHTML = `
+          <i class="fas fa-volume-up volume-icon" data-index="${index}"></i>
+          <input type="range" class="volume-slider" data-index="${index}" 
+                 min="0" max="200" value="${volume}" title="音量: ${volume}%">
+          <span class="volume-value" data-index="${index}">${volume}%</span>
+        `
+      }
+      
       fileItem.innerHTML = `
         <i class="fas fa-music file-icon"></i>
         <span class="file-name" title="${filePath}">${fileName}</span>
+        ${volumeControlHTML}
         <i class="fas fa-times file-remove" data-index="${index}"></i>
       `
       
@@ -187,6 +210,39 @@ document.addEventListener('DOMContentLoaded', async () => {
           document.querySelector('.progress-container').style.display = 'none'
         } else {
           progressCount.textContent = `${files.length} 个文件待处理`
+        }
+      })
+    })
+    
+    // 添加音量滑动条事件
+    document.querySelectorAll('.volume-slider').forEach(slider => {
+      slider.addEventListener('input', (e) => {
+        const index = parseInt(e.target.getAttribute('data-index'))
+        const volume = parseInt(e.target.value)
+        files[index].volume = volume
+        
+        // Update the volume value display
+        const valueSpan = document.querySelector(`.volume-value[data-index="${index}"]`)
+        if (valueSpan) {
+          valueSpan.textContent = `${volume}%`
+        }
+        
+        // Update slider title
+        e.target.title = `音量: ${volume}%`
+        
+        // Update the volume icon based on volume level
+        const volumeIcon = document.querySelector(`.volume-icon[data-index="${index}"]`)
+        if (volumeIcon) {
+          volumeIcon.className = 'fas volume-icon'
+          if (volume === 0) {
+            volumeIcon.classList.add('fa-volume-mute')
+          } else if (volume < 50) {
+            volumeIcon.classList.add('fa-volume-off')
+          } else if (volume < 100) {
+            volumeIcon.classList.add('fa-volume-down')
+          } else {
+            volumeIcon.classList.add('fa-volume-up')
+          }
         }
       })
     })
@@ -217,6 +273,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const chooseOutputDirBtn = document.getElementById('choose-output-dir')
   const deleteSourceCheckbox = document.getElementById('delete-source')
   const convertToMp3Checkbox = document.getElementById('convert-to-mp3')
+  const enableVolumeAdjustCheckbox = document.getElementById('enable-volume-adjust')
 
   // 在设置面板底部插入GPLv3和免费声明
   const modalBody = document.querySelector('.modal-body')
@@ -241,6 +298,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   outputDirInput.value = settings.outputDir
   deleteSourceCheckbox.checked = settings.deleteSource
   convertToMp3Checkbox.checked = settings.convertToMp3
+  enableVolumeAdjustCheckbox.checked = settings.enableVolumeAdjust
+  volumeAdjustEnabled = settings.enableVolumeAdjust
   document.documentElement.setAttribute('data-theme', currentTheme)
   
   // 主题切换相关事件处理
@@ -295,6 +354,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     await window.electronAPI.saveSettings({
       convertToMp3: e.target.checked
     })
+  })
+  
+  enableVolumeAdjustCheckbox.addEventListener('change', async (e) => {
+    volumeAdjustEnabled = e.target.checked
+    await window.electronAPI.saveSettings({
+      enableVolumeAdjust: e.target.checked
+    })
+    // Update file list to show/hide volume controls
+    updateFileList()
   })
   
   // 模态框控制

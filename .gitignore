@@ -1,3 +1,15 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Build outputs
+dist/
+
+# IDE and OS files
+.DS_Store
+.vscode/
+*.log
+
 # Ignore platform-specific binaries in assets
 
 assets/ncmdump/win-x64/ncmdump.exe
