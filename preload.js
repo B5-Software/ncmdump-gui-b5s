@@ -23,7 +23,8 @@ const os = require('os')
 contextBridge.exposeInMainWorld('electronAPI', {
   // 暴露平台信息
   platform: os.platform(),
-  decryptFiles: (files) => ipcRenderer.invoke('decrypt-files', files),
+  // filesData can be array of strings (legacy) or array of {path, volume} objects
+  decryptFiles: (filesData) => ipcRenderer.invoke('decrypt-files', filesData),
   openFileDialog: () => ipcRenderer.invoke('open-file-dialog'),
   openOutputDir: (dirPath) => ipcRenderer.invoke('open-output-dir', dirPath),
   onProgressUpdate: (callback) => ipcRenderer.on('progress-update', callback),
