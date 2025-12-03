@@ -335,13 +335,18 @@ ipcMain.handle('decrypt-files', async (event, filesData) => {
         // 使用ffmpeg(GPLv3)进行格式转换和音量调节
         const ffmpegPath = getFfmpegPath() // GPLv3
         let processedCount = 0
-        const totalToProcess = settings.convertToMp3 
-          ? audioFiles.filter(f => f.toLowerCase().endsWith('.flac')).length 
-          : Object.keys(volumeMap).length
+        
+        // Build a map for O(1) lookup of audio files by base name
+        const audioFileMap = new Map()
+        audioFiles.forEach(f => {
+          const baseName = path.basename(f, path.extname(f))
+          audioFileMap.set(baseName, f)
+        })
 
         // Process FLAC to MP3 conversion if enabled
         if (settings.convertToMp3) {
           const flacFiles = audioFiles.filter(f => f.toLowerCase().endsWith('.flac'))
+          const totalFlacFiles = flacFiles.length
           
           for (const file of flacFiles) {
             const inputPath = path.join(settings.outputDir, file)
@@ -370,7 +375,7 @@ ipcMain.handle('decrypt-files', async (event, filesData) => {
                     processedCount++
                     mainWindow.webContents.send('progress-update', { 
                       completed: processedCount, 
-                      total: totalToProcess, 
+                      total: totalFlacFiles, 
                       stage: 'ffmpeg' 
                     })
                     resolveFfmpeg()
@@ -396,11 +401,8 @@ ipcMain.handle('decrypt-files', async (event, filesData) => {
           for (const fileBaseName of remainingFiles) {
             const volume = volumeMap[fileBaseName]
             
-            // Find the actual output file
-            let audioFile = audioFiles.find(f => {
-              const baseName = path.basename(f, path.extname(f))
-              return baseName === fileBaseName
-            })
+            // Use the map for O(1) lookup of the actual output file
+            let audioFile = audioFileMap.get(fileBaseName)
             
             if (!audioFile) continue
             
